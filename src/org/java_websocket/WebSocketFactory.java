@@ -36,7 +36,7 @@ public interface WebSocketFactory {
 	 * @param d The draft which should be used
 	 * @return A WebsocketImpl
 	 */
-	WebSocket createWebSocket( WebSocketAdapter a, Draft d);
+	WebSocket createWebSocket(WebSocketAdapter a, Draft d);
 
 	/**
 	 * Create a new Websocket with the provided listener, drafts and socket
@@ -44,6 +44,6 @@ public interface WebSocketFactory {
 	 * @param drafts The drafts which should be used
 	 * @return A WebsocketImpl
 	 */
-	WebSocket createWebSocket( WebSocketAdapter a, List<Draft> drafts);
+	WebSocket createWebSocket(WebSocketAdapter a, List<Draft> drafts);
 
 }

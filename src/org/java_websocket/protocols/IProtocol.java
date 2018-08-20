@@ -39,7 +39,7 @@ public interface IProtocol {
 	 * @return true, if the offer does fit to this specific protocol
 	 * @since 1.3.7
 	 */
-	boolean acceptProvidedProtocol( String inputProtocolHeader );
+	boolean acceptProvidedProtocol(String inputProtocolHeader);
 
 	/**
 	 * Return the specific Sec-WebSocket-protocol header offer for this protocol if the endpoint.

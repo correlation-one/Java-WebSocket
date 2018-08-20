@@ -34,5 +34,5 @@ public interface ClientHandshakeBuilder extends HandshakeBuilder, ClientHandshak
 	 * Set a specific resource descriptor
 	 * @param resourceDescriptor the resource descriptior to set
 	 */
-	void setResourceDescriptor( String resourceDescriptor );
+	void setResourceDescriptor(String resourceDescriptor);
 }

@@ -43,7 +43,7 @@ public interface IExtension {
 	 * @throws InvalidDataException Throw InvalidDataException if the received frame is not correctly implemented by the other endpoint or there are other protocol errors/decoding errors
 	 * @since 1.3.5
 	 */
-	void decodeFrame( Framedata inputFrame ) throws InvalidDataException;
+	void decodeFrame(Framedata inputFrame) throws InvalidDataException;
 
 	/**
 	 * Encode a frame with a extension specific algorithm.
@@ -53,7 +53,7 @@ public interface IExtension {
 	 * @param inputFrame the frame, which has do be encoded to be used on the other endpoint
 	 * @since 1.3.5
 	 */
-	void encodeFrame( Framedata inputFrame );
+	void encodeFrame(Framedata inputFrame);
 
 	/**
 	 * Check if the received Sec-WebSocket-Extensions header field contains a offer for the specific extension if the endpoint is in the role of a server
@@ -62,7 +62,7 @@ public interface IExtension {
 	 * @return true, if the offer does fit to this specific extension
 	 * @since 1.3.5
 	 */
-	boolean acceptProvidedExtensionAsServer( String inputExtensionHeader );
+	boolean acceptProvidedExtensionAsServer(String inputExtensionHeader);
 
 	/**
 	 * Check if the received Sec-WebSocket-Extensions header field contains a offer for the specific extension if the endpoint is in the role of a client
@@ -71,7 +71,7 @@ public interface IExtension {
 	 * @return true, if the offer does fit to this specific extension
 	 * @since 1.3.5
 	 */
-	boolean acceptProvidedExtensionAsClient( String inputExtensionHeader );
+	boolean acceptProvidedExtensionAsClient(String inputExtensionHeader);
 
 	/**
 	 * Check if the received frame is correctly implemented by the other endpoint and there are no specification errors (like wrongly set RSV)
@@ -80,7 +80,7 @@ public interface IExtension {
 	 * @throws InvalidDataException Throw InvalidDataException if the received frame is not correctly implementing the specification for the specific extension
 	 * @since 1.3.5
 	 */
-	void isFrameValid( Framedata inputFrame ) throws InvalidDataException;
+	void isFrameValid(Framedata inputFrame) throws InvalidDataException;
 
 	/**
 	 * Return the specific Sec-WebSocket-Extensions header offer for this extension if the endpoint is in the role of a client.

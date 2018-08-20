@@ -24,9 +24,6 @@
  */
 package org.java_websocket;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -54,14 +51,7 @@ import java.util.concurrent.Future;
  */
 public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
 
-    /**
-     * Logger instance
-     *
-     * @since 1.4.0
-     */
-    private static final Logger log = LoggerFactory.getLogger(SSLSocketChannel2.class);
-
-    /**
+  /**
      * This object is used to feed the {@link SSLEngine}'s wrap and unwrap methods during the handshake phase.
      **/
     protected static ByteBuffer emptybuffer = ByteBuffer.allocate( 0 );
@@ -152,7 +142,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
             }
         }
 
-        if( sslEngine.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP ) {
+        if( sslEngine.getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP ) {
             if( !isBlocking() || readEngineResult.getStatus() == Status.BUFFER_UNDERFLOW ) {
                 inCrypt.compact();
                 int read = socketChannel.read( inCrypt );
@@ -169,7 +159,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
             }
         }
         consumeDelegatedTasks();
-        if( tasks.isEmpty() || sslEngine.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_WRAP ) {
+        if( tasks.isEmpty() || sslEngine.getHandshakeStatus() == HandshakeStatus.NEED_WRAP ) {
             socketChannel.write( wrap( emptybuffer ) );
             if( writeEngineResult.getHandshakeStatus() == HandshakeStatus.FINISHED ) {
                 createBuffers( sslEngine.getSession() );
@@ -193,7 +183,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
     private synchronized ByteBuffer unwrap() throws SSLException {
         int rem;
         //There are some ssl test suites, which get around the selector.select() call, which cause an infinite unwrap and 100% cpu usage (see #459 and #458)
-        if(readEngineResult.getStatus() == SSLEngineResult.Status.CLOSED && sslEngine.getHandshakeStatus() == HandshakeStatus.NOT_HANDSHAKING){
+        if(readEngineResult.getStatus() == Status.CLOSED && sslEngine.getHandshakeStatus() == HandshakeStatus.NOT_HANDSHAKING){
             try {
                 close();
             } catch (IOException e) {
@@ -202,8 +192,12 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
         }
         do {
             rem = inData.remaining();
-            readEngineResult = sslEngine.unwrap( inCrypt, inData );
-        } while ( readEngineResult.getStatus() == SSLEngineResult.Status.OK && ( rem != inData.remaining() || sslEngine.getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP ) );
+            try {
+                readEngineResult = sslEngine.unwrap(inCrypt, inData);
+            } catch (UnsupportedOperationException e) {
+                throw new SSLException(e);
+            }
+        } while ( readEngineResult.getStatus() == Status.OK && ( rem != inData.remaining() || sslEngine.getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP ) );
         inData.flip();
         return inData;
     }
@@ -232,14 +226,8 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
             if( inCrypt.capacity() != netBufferMax )
                 inCrypt = ByteBuffer.allocate( netBufferMax );
         }
-        if (inData.remaining() != 0 && log.isTraceEnabled()) {
-            log.trace(new String( inData.array(), inData.position(), inData.remaining()));
-        }
         inData.rewind();
         inData.flip();
-        if (inCrypt.remaining() != 0 && log.isTraceEnabled()) {
-            log.trace(new String( inCrypt.array(), inCrypt.position(), inCrypt.remaining()));
-        }
         inCrypt.rewind();
         inCrypt.flip();
         outCrypt.rewind();
@@ -257,7 +245,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
         //	createBuffers( sslEngine.getSession() );
         //}
         int num = socketChannel.write( wrap( src ) );
-        if (writeEngineResult.getStatus() == SSLEngineResult.Status.CLOSED) {
+        if (writeEngineResult.getStatus() == Status.CLOSED) {
             throw new EOFException("Connection is closed");
         }
         return num;
@@ -335,7 +323,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
         if( inCrypt.hasRemaining() ) {
             unwrap();
             int amount = transfereTo( inData, dst );
-            if (readEngineResult.getStatus() == SSLEngineResult.Status.CLOSED) {
+            if (readEngineResult.getStatus() == Status.CLOSED) {
                 return -1;
             }
             if( amount > 0 )
@@ -358,7 +346,7 @@ public class SSLSocketChannel2 implements ByteChannel, WrappedByteChannel {
 
     private boolean isHandShakeComplete() {
         HandshakeStatus status = sslEngine.getHandshakeStatus();
-        return status == SSLEngineResult.HandshakeStatus.FINISHED || status == SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING;
+        return status == HandshakeStatus.FINISHED || status == HandshakeStatus.NOT_HANDSHAKING;
     }
 
     public SelectableChannel configureBlocking( boolean b ) throws IOException {

@@ -26,8 +26,6 @@
 package org.java_websocket;
 
 import org.java_websocket.util.ByteBufferUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
@@ -63,13 +61,6 @@ import java.util.concurrent.ExecutorService;
  *         Permission for usage recieved at May 25, 2017 by Alex Karnezis
  */
 public class SSLSocketChannel implements WrappedByteChannel, ByteChannel {
-
-	/**
-	 * Logger instance
-	 *
-	 * @since 1.4.0
-	 */
-	private static final Logger log = LoggerFactory.getLogger(SSLSocketChannel.class);
 
 	/**
 	 * The underlaying socket channel
@@ -138,7 +129,7 @@ public class SSLSocketChannel implements WrappedByteChannel, ByteChannel {
 			try {
 				socketChannel.close();
 			} catch ( IOException e ) {
-				log.error("Exception during the closing of the channel", e);
+				e.printStackTrace();
 			}
 		}
 	}
@@ -166,7 +157,7 @@ public class SSLSocketChannel implements WrappedByteChannel, ByteChannel {
 				try {
 					result = engine.unwrap( peerNetData, peerAppData );
 				} catch ( SSLException e ) {
-					log.error("SSLExcpetion during unwrap", e);
+					e.printStackTrace();
 					throw e;
 				}
 				switch(result.getStatus()) {
@@ -265,7 +256,7 @@ public class SSLSocketChannel implements WrappedByteChannel, ByteChannel {
 		peerNetData.clear();
 
 		handshakeStatus = engine.getHandshakeStatus();
-		while( handshakeStatus != SSLEngineResult.HandshakeStatus.FINISHED && handshakeStatus != SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING ) {
+		while( handshakeStatus != HandshakeStatus.FINISHED && handshakeStatus != HandshakeStatus.NOT_HANDSHAKING ) {
 			switch(handshakeStatus) {
 				case NEED_UNWRAP:
 					if( socketChannel.read( peerNetData ) < 0 ) {
@@ -466,7 +457,7 @@ public class SSLSocketChannel implements WrappedByteChannel, ByteChannel {
 		try {
 			engine.closeInbound();
 		} catch ( Exception e ) {
-			log.error( "This engine was forced to close inbound, without having received the proper SSL/TLS close notification message from the peer, due to end of stream." );
+			System.err.println( "This engine was forced to close inbound, without having received the proper SSL/TLS close notification message from the peer, due to end of stream." );
 		}
 		closeConnection();
 	}

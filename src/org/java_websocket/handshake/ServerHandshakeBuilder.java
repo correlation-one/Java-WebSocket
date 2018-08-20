@@ -34,11 +34,11 @@ public interface ServerHandshakeBuilder extends HandshakeBuilder, ServerHandshak
 	 * Setter for the http status code
 	 * @param status the http status code
 	 */
-	void setHttpStatus( short status );
+	void setHttpStatus(short status);
 
 	/**
 	 * Setter for the http status message
 	 * @param message the http status message
 	 */
-	void setHttpStatusMessage( String message );
+	void setHttpStatusMessage(String message);
 }

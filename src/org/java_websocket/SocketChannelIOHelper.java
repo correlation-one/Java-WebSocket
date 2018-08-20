@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 
-import org.java_websocket.enums.Role;
+import org.java_websocket.WebSocket.Role;
 
 public class SocketChannelIOHelper {
 
@@ -72,9 +72,6 @@ public class SocketChannelIOHelper {
 	 * @return returns Whether there is more data to write
 	 */
 	public static boolean batch( WebSocketImpl ws, ByteChannel sockchannel ) throws IOException {
-		if (ws == null) {
-			return false;
-		}
 		ByteBuffer buffer = ws.outQueue.peek();
 		WrappedByteChannel c = null;
 
@@ -97,8 +94,10 @@ public class SocketChannelIOHelper {
 			} while ( buffer != null );
 		}
 
-		if( ws.outQueue.isEmpty() && ws.isFlushAndClose() && ws.getDraft() != null && ws.getDraft().getRole() != null && ws.getDraft().getRole() == Role.SERVER ) {//
-			ws.closeConnection();
+		if( ws != null && ws.outQueue.isEmpty() && ws.isFlushAndClose() && ws.getDraft() != null && ws.getDraft().getRole() != null && ws.getDraft().getRole() == Role.SERVER ) {//
+			synchronized ( ws ) {
+				ws.closeConnection();
+			}
 		}
 		return c == null || !((WrappedByteChannel) sockchannel).isNeedWrite();
 	}

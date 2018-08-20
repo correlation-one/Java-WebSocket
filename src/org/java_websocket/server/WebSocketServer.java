@@ -53,8 +53,6 @@ import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.Handshakedata;
 import org.java_websocket.handshake.ServerHandshakeBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <tt>WebSocketServer</tt> is an abstract class that only takes care of the
@@ -63,13 +61,6 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public abstract class WebSocketServer extends AbstractWebSocket implements Runnable {
-
-	/**
-	 * Logger instance
-	 *
-	 * @since 1.4.0
-	 */
-	private static final Logger log = LoggerFactory.getLogger(WebSocketServer.class);
 
 	public static int DECODERS = Runtime.getRuntime().availableProcessors();
 
@@ -191,6 +182,8 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	 * @see <a href="https://github.com/TooTallNate/Java-WebSocket/wiki/Drafts" > more about drafts</a>
 	 */
 	public WebSocketServer( InetSocketAddress address , int decodercount , List<Draft> drafts , Collection<WebSocket> connectionscontainer ) {
+		System.out.println("Creating modified websockets server");
+
 		if( address == null || decodercount < 1 || connectionscontainer == null ) {
 			throw new IllegalArgumentException( "address and connectionscontainer must not be null and you need at least 1 decoder" );
 		}
@@ -228,7 +221,9 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	public void start() {
 		if( selectorthread != null )
 			throw new IllegalStateException( getClass().getName() + " can only be started once." );
-		new Thread( this ).start();
+		Thread thread = new Thread(this);
+		thread.setPriority(8);
+		thread.start();
 	}
 
 	/**
@@ -270,6 +265,21 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	}
 	public void stop() throws IOException , InterruptedException {
 		stop( 0 );
+	}
+
+	/**
+	 * PLEASE use the method getConnections() in the future!
+	 *
+	 * Returns a WebSocket[] of currently connected clients.
+	 * Its iterators will be failfast and its not judicious
+	 * to modify it.
+	 * 
+	 * @return The currently connected clients.
+	 *
+	 */
+	@Deprecated
+	public Collection<WebSocket> connections() {
+		return getConnections();
 	}
 
 	/**
@@ -471,7 +481,6 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 				try {
 					selector.close();
 				} catch ( IOException e ) {
-					log.error( "IOException during selector.close", e );
 					onError( null, e );
 				}
 			}
@@ -479,7 +488,6 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 				try {
 					server.close();
 				} catch ( IOException e ) {
-					log.error( "IOException during server.close", e );
 					onError( null, e );
 				}
 			}
@@ -532,13 +540,13 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 				} catch ( IOException e ) {
 					// there is nothing that must be done here
 				}
-				log.trace("Connection closed because of exception",ex);
+				if( WebSocketImpl.DEBUG )
+					System.out.println("Connection closed because of " + ex);
 			}
 		}
 	}
 
 	private void handleFatal( WebSocket conn, Exception e ) {
-		log.error( "Shutdown due to fatal error", e );
 		onError( conn, e );
 		//Shutting down WebSocketWorkers, see #222
 		if( decoders != null ) {
@@ -552,20 +560,24 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 		try {
 			stop();
 		} catch ( IOException e1 ) {
-			log.error( "Error during shutdown", e1 );
 			onError( null, e1 );
 		} catch ( InterruptedException e1 ) {
 			Thread.currentThread().interrupt();
-			log.error( "Interrupt during stop", e );
 			onError( null, e1 );
 		}
 	}
+
 
 	@Override
 	public final void onWebsocketMessage( WebSocket conn, String message ) {
 		onMessage( conn, message );
 	}
 
+	@Override
+	@Deprecated
+	public/*final*/void onWebsocketMessageFragment( WebSocket conn, Framedata frame ) {// onFragment should be overloaded instead
+		onFragment( conn, frame );
+	}
 
 	@Override
 	public final void onWebsocketMessage( WebSocket conn, ByteBuffer blob ) {
@@ -611,7 +623,9 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 				removed = this.connections.remove( ws );
 			} else {
 				//Don't throw an assert error if the ws is not in the list. e.g. when the other endpoint did not send any handshake. see #512
-				log.trace("Removing connection which is not in the connections collection! Possible no handshake recieved! {}", ws);
+				if (WebSocketImpl.DEBUG) {
+					System.out.println("Removing connection which is not in the connections collection! Possible no handshake recieved! " + ws);
+				}
 			}
 		}
 		if( isclosed.get() && connections.size() == 0 ) {
@@ -776,6 +790,17 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 	}
 
 	/**
+	 * Callback for fragmented frames
+	 * @see WebSocket#sendFragmentedFrame(org.java_websocket.framing.Framedata.Opcode, ByteBuffer, boolean)
+	 * @param conn
+	 *            The <tt>WebSocket</tt> instance this event is occurring on.
+	 * @param fragment The fragmented frame
+	 */
+	@Deprecated
+	public void onFragment( WebSocket conn, Framedata fragment ) {
+	}
+
+	/**
 	 * Send a text to all connected endpoints
 	 * @param text the text to send to the endpoints
 	 */
@@ -820,7 +845,23 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 		if (data == null || clients == null) {
 			throw new IllegalArgumentException();
 		}
-		doBroadcast(data, clients);
+		Map<Draft, List<Framedata>> draftFrames = new HashMap<Draft, List<Framedata>>();
+		synchronized( clients ) {
+			for( WebSocket client : clients ) {
+				if( client != null ) {
+					Draft draft = client.getDraft();
+					if( !draftFrames.containsKey( draft ) ) {
+						List<Framedata> frames = draft.createFrames( data, false );
+						draftFrames.put( draft, frames );
+					}
+					try {
+						client.sendFrame( draftFrames.get( draft ) );
+					} catch ( WebsocketNotConnectedException e ) {
+						//Ignore this exception in this case
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -832,46 +873,20 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 		if (text == null || clients == null) {
 			throw new IllegalArgumentException();
 		}
-		doBroadcast(text, clients);
-	}
-
-	/**
-	 * Private method to cache all the frames to improve memory footprint and conversion time
-	 * @param data the data to broadcast
-	 * @param clients the clients to send the message to
-	 */
-	private void doBroadcast(Object data, Collection<WebSocket> clients) {
-		String sData = null;
-		if (data instanceof String) {
-			sData = (String)data;
-		}
-		ByteBuffer bData = null;
-		if (data instanceof ByteBuffer) {
-			bData = (ByteBuffer)data;
-		}
-		if (sData == null && bData == null) {
-			return;
-		}
 		Map<Draft, List<Framedata>> draftFrames = new HashMap<Draft, List<Framedata>>();
-		for( WebSocket client : clients ) {
-			if( client != null ) {
-				Draft draft = client.getDraft();
-				if( !draftFrames.containsKey( draft ) ) {
-					List<Framedata> frames = null;
-					if (sData != null) {
-						frames = draft.createFrames( sData, false );
+		synchronized( clients ) {
+			for( WebSocket client : clients ) {
+				if( client != null ) {
+					Draft draft = client.getDraft();
+					if( !draftFrames.containsKey( draft ) ) {
+						List<Framedata> frames = draft.createFrames( text, false );
+						draftFrames.put( draft, frames );
 					}
-					if (bData != null) {
-						frames = draft.createFrames( bData, false );
+					try {
+						client.sendFrame( draftFrames.get( draft ) );
+					} catch ( WebsocketNotConnectedException e ) {
+						//Ignore this exception in this case
 					}
-					if (frames != null) {
-						draftFrames.put(draft, frames);
-					}
-				}
-				try {
-					client.sendFrame( draftFrames.get( draft ) );
-				} catch ( WebsocketNotConnectedException e ) {
-					//Ignore this exception in this case
 				}
 			}
 		}
@@ -890,7 +905,9 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 			setUncaughtExceptionHandler( new UncaughtExceptionHandler() {
 				@Override
 				public void uncaughtException( Thread t, Throwable e ) {
-					log.error("Uncaught exception in thread {}: {}", t.getName(), e);
+					System.err.print("Uncaught exception in thread \""
+							+ t.getName() + "\":");
+					e.printStackTrace(System.err);
 				}
 			} );
 		}
@@ -911,7 +928,8 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 					try {
 						ws.decode( buf );
 					} catch(Exception e){
-						log.error("Error while reading from remote connection", e);
+						System.err.println("Error while reading from remote connection: " + e);
+						e.printStackTrace();
 					}
 					
 					finally {
@@ -919,7 +937,6 @@ public abstract class WebSocketServer extends AbstractWebSocket implements Runna
 					}
 				}
 			} catch ( InterruptedException e ) {
-				Thread.currentThread().interrupt();
 			} catch ( RuntimeException e ) {
 				handleFatal( ws, e );
 			}

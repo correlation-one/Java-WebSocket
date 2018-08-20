@@ -58,7 +58,7 @@ public interface WrappedByteChannel extends ByteChannel {
 	 * @return the amount of remaining data
 	 * @throws IOException when a error occurred during unwrapping
 	 **/
-	int readMore( ByteBuffer dst ) throws IOException;
+	int readMore(ByteBuffer dst) throws IOException;
 
 	/**
 	 * This function returns the blocking state of the channel

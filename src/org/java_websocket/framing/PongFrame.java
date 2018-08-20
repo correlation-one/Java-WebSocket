@@ -25,8 +25,6 @@
 
 package org.java_websocket.framing;
 
-import org.java_websocket.enums.Opcode;
-
 /**
  * Class to represent a pong frame
  */

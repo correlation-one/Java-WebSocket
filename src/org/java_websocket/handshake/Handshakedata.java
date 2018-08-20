@@ -43,14 +43,14 @@ public interface Handshakedata {
 	 * @param name The name of the field
 	 * @return the value of the field or an empty String if not in the handshake
 	 */
-	String getFieldValue( String name );
+	String getFieldValue(String name);
 
 	/**
 	 * Checks if this handshake contains a specific field
 	 * @param name The name of the field
 	 * @return true, if it contains the field
 	 */
-	boolean hasFieldValue( String name );
+	boolean hasFieldValue(String name);
 
 	/**
 	 * Get the content of the handshake
